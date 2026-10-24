@@ -21,7 +21,6 @@
     --dove: #5f5f5f;
     --got: #ffd9a8;      /* light orange */
     --desire: #f8c3d6;   /* pink */
-    --scroll: #f1f1f1;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -67,13 +66,9 @@
     vertical-align: top; overflow-wrap: break-word; word-wrap: break-word;
     font-size: 15px; line-height: 1.3;
   }
-  col.c-scroll { width: 34px; }
   col.c-num { width: 48px; }
   col.c-author { width: 30%; }
   col.c-btn { width: 64px; }
-  td.scroll, th.scroll { padding: 0; border-right: 1px solid var(--line); }
-  td.scroll { background: repeating-linear-gradient(0deg, var(--scroll) 0 6px, #e2e2e2 6px 7px); }
-  th.scroll { background: #e2e2e2; font-size: 10px; font-weight: 500; text-align: center; color: var(--muted); }
   td.num { color: var(--muted); font-variant-numeric: tabular-nums; }
   td a { color: inherit; text-decoration-color: #9a9a9a; }
   tr.got td.data { background: var(--got); }
@@ -87,11 +82,15 @@
   tr.desire td.btn button.b-desire { background: #e0628f; border-color: #c94a77; color: #fff; }
   td.btn button.b-read.on { background: #4f8a5b; border-color: #3c7048; color: #fff; font-weight: 700; }
   #empty { padding: 24px; text-align: center; color: var(--muted); }
+  footer {
+    font-size: 11px; color: var(--muted); text-align: center;
+    padding: 5px 12px calc(env(safe-area-inset-bottom) + 5px);
+    border-top: 1px solid var(--line); background: #f7f7f7;
+  }
   /* Phones: author moves under the title to give the title room. */
   @media (max-width: 600px) {
     col.c-btn { width: 54px; }
     col.c-num { width: 38px; }
-    col.c-scroll { width: 28px; }
     col.c-author, .author { display: none; }
     .narrow-only { display: inline; }
     div.narrow-only { display: block; }
@@ -126,12 +125,11 @@
 <main>
   <table>
     <colgroup>
-      <col class="c-scroll"><col class="c-num"><col class="c-title"><col class="c-author">
+      <col class="c-num"><col class="c-title"><col class="c-author">
       <col class="c-btn"><col class="c-btn"><col class="c-btn">
     </colgroup>
     <thead>
       <tr>
-        <th class="scroll">Scroll</th>
         <th class="sortable" data-key="n">No. <span class="arrow"></span></th>
         <th><span class="sortable" data-key="title">Title <span class="arrow"></span></span><span class="narrow-only"> / </span><span class="sortable narrow-only" data-key="author">Author <span class="arrow"></span></span></th>
         <th class="sortable author" data-key="author">Author <span class="arrow"></span></th>
@@ -142,6 +140,7 @@
   </table>
   <div id="empty" hidden>No books match your search.</div>
 </main>
+<footer>V.10. Concept by dan-suri-weather, coded by Claude Code.</footer>
 
 <script>
 const LIST_URL = 'https://persephonebooks.co.uk/pages/book-list';
@@ -263,7 +262,6 @@ function render() {
   document.getElementById('rows').innerHTML = list.map(b => {
     const st = status[b.n] || {};
     return `<tr class="${st.s || ''}" data-n="${b.n}">
-      <td class="scroll"></td>
       <td class="data num">${b.n}</td>
       <td class="data"><a href="${PRODUCT_URL}${encodeURIComponent(b.slug)}" target="_blank" rel="noopener">${esc(b.title)}</a><div class="sub narrow-only">${esc(b.author)}</div></td>
       <td class="data author">${esc(b.author)}</td>

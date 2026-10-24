@@ -1,5 +1,5 @@
 // Lets the app open with no internet connection. Network first, cached copy as fallback.
-const CACHE = 'persephone-tracker-v2';
+const CACHE = 'persephone-tracker-v3';
 const SHELL = ['./', 'index.html', 'books.json', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
