@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Persephone Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PerseTrack">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#5f5f5f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    --ink: #2b2b2b;
+    --muted: #6b6b6b;
+    --line: #dcdcdc;
+    --paper: #ffffff;
+    --dove: #5f5f5f;
+    --got: #ffd9a8;      /* light orange */
+    --desire: #f8c3d6;   /* pink */
+    --scroll: #f1f1f1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--paper);
+    display: flex; flex-direction: column;
+    -webkit-text-size-adjust: 100%;
+  }
+  header {
+    background: var(--dove); color: #fff;
+    padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
+  }
+  h1 { margin: 0 0 8px; font: 600 1.35rem Georgia, "Times New Roman", serif; letter-spacing: .02em; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .bar input[type=search] {
+    flex: 1 1 180px; min-width: 0; font-size: 16px; padding: 9px 10px;
+    border: 0; border-radius: 8px;
+  }
+  .bar select, .bar button {
+    font-size: 15px; padding: 9px 12px; border-radius: 8px; border: 0;
+    background: #fff; color: var(--ink);
+  }
+  .bar button { background: #e9e9e9; }
+  .bar button:active { background: #cfcfcf; }
+  #summary { font-size: 13px; opacity: .9; margin-top: 8px; }
+  #msg { font-size: 13px; margin-top: 4px; min-height: 1em; }
+
+  main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: #ececec; font-size: 13px; text-align: left;
+    padding: 8px 6px; border-bottom: 1px solid var(--line);
+    user-select: none; -webkit-user-select: none;
+  }
+  .sortable { cursor: pointer; }
+  .narrow-only { display: none; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  th .arrow { color: var(--muted); }
+  td {
+    padding: 8px 6px; border-bottom: 1px solid var(--line);
+    vertical-align: top; overflow-wrap: break-word; word-wrap: break-word;
+    font-size: 15px; line-height: 1.3;
+  }
+  col.c-scroll { width: 34px; }
+  col.c-num { width: 48px; }
+  col.c-author { width: 30%; }
+  col.c-btn { width: 64px; }
+  td.scroll, th.scroll { padding: 0; border-right: 1px solid var(--line); }
+  td.scroll { background: repeating-linear-gradient(0deg, var(--scroll) 0 6px, #e2e2e2 6px 7px); }
+  th.scroll { background: #e2e2e2; font-size: 10px; font-weight: 500; text-align: center; color: var(--muted); }
+  td.num { color: var(--muted); font-variant-numeric: tabular-nums; }
+  td a { color: inherit; text-decoration-color: #9a9a9a; }
+  tr.got td.data { background: var(--got); }
+  tr.desire td.data { background: var(--desire); }
+  td.btn { padding: 5px 3px; text-align: center; vertical-align: middle; }
+  td.btn button {
+    width: 100%; min-height: 38px; font-size: 13px; border-radius: 7px;
+    border: 1px solid #bdbdbd; background: #fafafa; color: var(--ink); padding: 0 2px;
+  }
+  tr.got td.btn button.b-got { background: #f0a24a; border-color: #d9862a; color: #fff; }
+  tr.desire td.btn button.b-desire { background: #e0628f; border-color: #c94a77; color: #fff; }
+  td.btn button.b-read.on { background: #4f8a5b; border-color: #3c7048; color: #fff; font-weight: 700; }
+  #empty { padding: 24px; text-align: center; color: var(--muted); }
+  /* Phones: author moves under the title to give the title room. */
+  @media (max-width: 600px) {
+    col.c-btn { width: 54px; }
+    col.c-num { width: 38px; }
+    col.c-scroll { width: 28px; }
+    col.c-author, .author { display: none; }
+    .narrow-only { display: inline; }
+    div.narrow-only { display: block; }
+    th, td { padding-left: 4px; padding-right: 4px; }
+    td { font-size: 14px; }
+    td.btn button { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Persephone Tracker</h1>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search number, title or author" autocomplete="off" autocorrect="off">
+    <select id="filter" aria-label="Show">
+      <option value="all">All books</option>
+      <option value="got">Got</option>
+      <option value="desire">Desire</option>
+      <option value="none">Neither</option>
+      <option value="unread">Not read</option>
+    </select>
+  </div>
+  <div class="bar" style="margin-top:8px">
+    <button id="updateBtn">Update book list</button>
+    <button id="exportBtn">Export to .csv</button>
+    <button id="importBtn">Restore from .csv</button>
+    <input id="importFile" type="file" accept=".csv,text/csv" hidden>
+  </div>
+  <div id="summary"></div>
+  <div id="msg"></div>
+</header>
+<main>
+  <table>
+    <colgroup>
+      <col class="c-scroll"><col class="c-num"><col class="c-title"><col class="c-author">
+      <col class="c-btn"><col class="c-btn"><col class="c-btn">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="scroll">Scroll</th>
+        <th class="sortable" data-key="n">No. <span class="arrow"></span></th>
+        <th><span class="sortable" data-key="title">Title <span class="arrow"></span></span><span class="narrow-only"> / </span><span class="sortable narrow-only" data-key="author">Author <span class="arrow"></span></span></th>
+        <th class="sortable author" data-key="author">Author <span class="arrow"></span></th>
+        <th>Got</th><th>Desire</th><th>Read</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="empty" hidden>No books match your search.</div>
+</main>
+
+<script>
+const LIST_URL = 'https://persephonebooks.co.uk/pages/book-list';
+const PRODUCT_URL = 'https://persephonebooks.co.uk/products/';
+const K_BOOKS = 'pt.books', K_STATUS = 'pt.status', K_SORT = 'pt.sort';
+
+// books: [{n, title, author, slug}]; status: {n: {s: 'got'|'desire'|'', r: bool}}
+let books = [], status = {}, sort = { key: 'n', dir: 1 };
+
+function load(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch (e) { return fallback; }
+}
+function save() {
+  try {
+    localStorage.setItem(K_BOOKS, JSON.stringify(books));
+    localStorage.setItem(K_STATUS, JSON.stringify(status));
+    localStorage.setItem(K_SORT, JSON.stringify(sort));
+  } catch (e) { say('Could not save on this device: ' + e.message); }
+}
+// Shows a message under the buttons, which clears itself after a few seconds unless `keep` is set.
+let sayTimer;
+function say(t, keep) {
+  document.getElementById('msg').textContent = t;
+  clearTimeout(sayTimer);
+  if (!keep) sayTimer = setTimeout(() => { document.getElementById('msg').textContent = ''; }, 6000);
+}
+const toBook = ([n, title, author, slug]) => ({ n, title, author, slug });
+
+// Adds only books whose number is not already in the list; never touches existing rows or status.
+function mergeBooks(incoming) {
+  const have = new Set(books.map(b => b.n));
+  const added = incoming.filter(b => !have.has(b.n));
+  books.push(...added);
+  return added;
+}
+
+// Parses the Persephone book-list page. Each numbered book is an <a href="/products/slug">
+// whose text contains a line "N. Title" followed by a line with the author.
+function parseListHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const out = [], seen = new Set();
+  for (const a of doc.querySelectorAll('a[href*="/products/"]')) {
+    const lines = a.textContent.split('\n').map(s => s.trim()).filter(Boolean);
+    const i = lines.findIndex(l => /^\d+\.\s+\S/.test(l));
+    if (i < 0) continue;
+    const m = lines[i].match(/^(\d+)\.\s+(.+)$/);
+    const n = +m[1];
+    if (seen.has(n)) continue;
+    seen.add(n);
+    const slug = a.getAttribute('href').split('/products/')[1].split(/[?#]/)[0];
+    out.push({ n, title: m[2], author: lines[i + 1] || '', slug });
+  }
+  return out;
+}
+
+async function fetchLatest() {
+  // 1) Straight from Persephone (works where the browser allows it).
+  try {
+    const r = await fetch(LIST_URL, { cache: 'no-store' });
+    if (r.ok) {
+      const list = parseListHtml(await r.text());
+      if (list.length > 50) return { list, source: 'persephonebooks.co.uk' };
+    }
+  } catch (e) { /* usually blocked by the browser; fall through */ }
+  // 2) books.json next to this app, refreshed daily from the same page by a GitHub Action.
+  const r = await fetch('books.json?t=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('book list unavailable (' + r.status + ')');
+  return { list: (await r.json()).map(toBook), source: 'the app’s daily copy of the Persephone list' };
+}
+
+async function updateList() {
+  const btn = document.getElementById('updateBtn');
+  btn.disabled = true; say('Checking Persephone for new books…', true);
+  try {
+    const { list, source } = await fetchLatest();
+    const added = mergeBooks(list);
+    save(); render();
+    say(added.length
+      ? `Added ${added.length} new book${added.length > 1 ? 's' : ''}: ` + added.map(b => b.n + '. ' + b.title).join('; ')
+      : `No new books (checked ${source}).`);
+  } catch (e) {
+    say('Could not update: ' + e.message + '. Check your internet connection.');
+  } finally { btn.disabled = false; }
+}
+
+function setStatus(n, which) {
+  const st = status[n] || (status[n] = { s: '', r: false });
+  if (which === 'read') st.r = !st.r;
+  else st.s = st.s === which ? '' : which;
+  save(); render();
+}
+
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[‘’]/g, "'").toLowerCase();
+
+function visibleBooks() {
+  const q = norm(document.getElementById('q').value.trim());
+  const f = document.getElementById('filter').value;
+  let list = books.filter(b => {
+    const st = status[b.n] || {};
+    if (f === 'got' && st.s !== 'got') return false;
+    if (f === 'desire' && st.s !== 'desire') return false;
+    if (f === 'none' && st.s) return false;
+    if (f === 'unread' && st.r) return false;
+    if (!q) return true;
+    if (/^\d+$/.test(q)) return String(b.n) === q || norm(b.title).includes(q);
+    return norm(b.title).includes(q) || norm(b.author).includes(q);
+  });
+  const { key, dir } = sort;
+  list.sort((a, b) => key === 'n' ? (a.n - b.n) * dir
+    : (norm(a[key]).localeCompare(norm(b[key])) || a.n - b.n) * dir);
+  return list;
+}
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function render() {
+  const list = visibleBooks();
+  document.getElementById('rows').innerHTML = list.map(b => {
+    const st = status[b.n] || {};
+    return `<tr class="${st.s || ''}" data-n="${b.n}">
+      <td class="scroll"></td>
+      <td class="data num">${b.n}</td>
+      <td class="data"><a href="${PRODUCT_URL}${encodeURIComponent(b.slug)}" target="_blank" rel="noopener">${esc(b.title)}</a><div class="sub narrow-only">${esc(b.author)}</div></td>
+      <td class="data author">${esc(b.author)}</td>
+      <td class="btn"><button class="b-got" data-act="got">Got</button></td>
+      <td class="btn"><button class="b-desire" data-act="desire">Desire</button></td>
+      <td class="btn"><button class="b-read ${st.r ? 'on' : ''}" data-act="read">${st.r ? 'Y' : '–'}</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('empty').hidden = list.length > 0;
+  for (const th of document.querySelectorAll('.sortable')) {
+    th.querySelector('.arrow').textContent = th.dataset.key === sort.key ? (sort.dir > 0 ? '▲' : '▼') : '';
+  }
+  const vals = Object.values(status);
+  document.getElementById('summary').textContent =
+    `${books.length} books · ${vals.filter(v => v.s === 'got').length} got · ` +
+    `${vals.filter(v => v.s === 'desire').length} desired · ${vals.filter(v => v.r).length} read` +
+    (list.length !== books.length ? ` · showing ${list.length}` : '');
+}
+
+// ---- CSV export / restore ----
+const csvCell = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+
+function exportCsv() {
+  const head = ['Number', 'Title', 'Author', 'Got', 'Desire', 'Read', 'Link'];
+  const rows = [...books].sort((a, b) => a.n - b.n).map(b => {
+    const st = status[b.n] || {};
+    return [String(b.n), b.title, b.author, st.s === 'got' ? 'Y' : '', st.s === 'desire' ? 'Y' : '',
+      st.r ? 'Y' : '', PRODUCT_URL + b.slug].map(csvCell).join(',');
+  });
+  const csv = '﻿' + [head.join(','), ...rows].join('\r\n');
+  const name = 'persephone-tracker-' + new Date().toISOString().slice(0, 10) + '.csv';
+  const file = new File([csv], name, { type: 'text/csv' });
+  // On iPad/iPhone the share sheet lets you save to Files, Mail it, etc.
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: name }).catch(() => {});
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function parseCsv(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  text = text.replace(/^﻿/, '');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// Restores Got/Desire/Read from a file made by "Export to .csv".
+function importCsv(text) {
+  const [head, ...rows] = parseCsv(text);
+  const col = name => head.findIndex(h => h.trim().toLowerCase() === name);
+  const iN = col('number'), iT = col('title'), iA = col('author'), iG = col('got'),
+        iD = col('desire'), iR = col('read'), iL = col('link');
+  if (iN < 0 || iG < 0) throw new Error('this does not look like a Persephone Tracker export');
+  const yes = v => (v || '').trim().toUpperCase() === 'Y';
+  let count = 0;
+  const extra = [];
+  for (const r of rows) {
+    const n = parseInt(r[iN], 10);
+    if (!n) continue;
+    status[n] = { s: yes(r[iG]) ? 'got' : yes(r[iD]) ? 'desire' : '', r: yes(r[iR]) };
+    if (iT >= 0 && iL >= 0) extra.push({ n, title: r[iT], author: iA >= 0 ? r[iA] : '', slug: (r[iL] || '').split('/products/')[1] || '' });
+    count++;
+  }
+  mergeBooks(extra);
+  save(); render();
+  say(`Restored status for ${count} books.`);
+}
+
+// ---- events ----
+document.getElementById('rows').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (btn) setStatus(+btn.closest('tr').dataset.n, btn.dataset.act);
+});
+for (const th of document.querySelectorAll('.sortable')) {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    sort = sort.key === key ? { key, dir: -sort.dir } : { key, dir: 1 };
+    save(); render();
+  });
+}
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('filter').addEventListener('change', render);
+document.getElementById('exportBtn').addEventListener('click', exportCsv);
+document.getElementById('updateBtn').addEventListener('click', updateList);
+document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (!confirm('Replace the Got / Desire / Read marks with the ones in ' + f.name + '?')) { e.target.value = ''; return; }
+  try { importCsv(await f.text()); } catch (err) { say('Could not restore: ' + err.message); }
+  e.target.value = '';
+});
+
+// ---- start ----
+(async function init() {
+  books = load(K_BOOKS, []);
+  status = load(K_STATUS, {});
+  sort = load(K_SORT, sort);
+  if (!books.length) {
+    try {
+      const r = await fetch('books.json');
+      books = (await r.json()).map(toBook);
+      save();
+    } catch (e) { say('Could not load the book list. Connect to the internet and reopen the app.'); }
+  }
+  render();
+  // Ask the browser not to clear this app's storage when space is low.
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
